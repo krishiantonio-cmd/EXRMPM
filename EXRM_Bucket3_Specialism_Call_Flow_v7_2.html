@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exchequer · Specialism Call Flow v7</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f5f6f8; color: #1a1a1a;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 640px; margin: 0 auto; padding: 20px 14px; }
+
+  /* Home */
+  .home-header { text-align: center; margin-bottom: 20px; }
+  .home-eyebrow { font-size: 10.5px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.14em; }
+  .home-title { font-size: 22px; font-weight: 800; color: #1B2A4A; margin: 8px 0 2px; }
+  .home-subtitle { font-size: 13px; color: #666; }
+
+  .rule-banner {
+    margin-bottom: 18px; padding: 12px 14px; background: #fff8e1; border-radius: 8px;
+    font-size: 12.5px; color: #5d4037; line-height: 1.5;
+  }
+  .rule-banner strong { color: #e65100; }
+
+  .section-label {
+    font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 8px; margin-top: 16px;
+  }
+
+  .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+  @media (max-width: 420px) { .spec-grid { grid-template-columns: 1fr; } }
+
+  .spec-card {
+    padding: 14px 16px; border: 1.5px solid; border-radius: 10px;
+    cursor: pointer; transition: all 0.12s; background: white; font-family: inherit; text-align: left;
+  }
+  .spec-card:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .spec-card-name { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .spec-card-hook { font-size: 11.5px; color: #555; line-height: 1.4; }
+
+  /* Flow header */
+  .flow-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #e8e8e8; gap: 8px;
+  }
+  .flow-prospect { font-size: 13.5px; font-weight: 700; color: #1B2A4A; }
+  .flow-prospect-co { font-weight: 400; color: #666; margin-left: 6px; font-size: 12.5px; }
+  .flow-spec { font-size: 11.5px; font-weight: 700; margin-top: 2px; }
+  .flow-nocount { font-size: 10.5px; font-weight: 700; margin-top: 3px; }
+  .nocount-warn { color: #c62828; }
+  .nocount-info { color: #e65100; }
+
+  .exit-btn {
+    padding: 5px 11px; background: none; border: 1px solid #ccc;
+    border-radius: 6px; cursor: pointer; font-size: 11.5px; color: #666;
+    flex-shrink: 0; font-family: inherit;
+  }
+
+  .voicemail-shortcut {
+    display: block; width: 100%; margin-bottom: 10px; padding: 7px;
+    background: #f5f5f5; border: 1px dashed #ccc; border-radius: 6px;
+    cursor: pointer; font-size: 11.5px; color: #888; text-align: center;
+    font-family: inherit;
+  }
+
+  /* Script blocks */
+  .you-say {
+    margin: 14px 0; padding: 14px 18px; border-left: 4px solid;
+    border-radius: 0 8px 8px 0;
+  }
+  .you-say-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; margin-bottom: 6px;
+  }
+  .you-say-text {
+    font-size: 14.5px; line-height: 1.55; color: #1a1a1a; font-style: italic;
+  }
+
+  .instruction {
+    margin: 10px 0; padding: 9px 14px; border-radius: 6px;
+    font-size: 12.5px; font-weight: 600; line-height: 1.45;
+  }
+  .instruction.info { background: #fff3e0; color: #e65100; }
+  .instruction.warn { background: #ffebee; color: #c62828; }
+  .instruction.tip { background: #e8f5e9; color: #2e7d32; }
+  .instruction.rule { background: #fff8e1; color: #f57c00; }
+
+  .response-btn, .action-btn {
+    display: block; width: 100%; text-align: left; margin: 5px 0;
+    padding: 11px 14px; border-radius: 8px; cursor: pointer;
+    font-size: 13.5px; line-height: 1.45; transition: all 0.12s;
+    font-family: inherit;
+  }
+
+  .response-btn {
+    background: white; border: 1.5px solid; color: #1a1a1a;
+  }
+  .response-btn .they-say-label {
+    font-size: 11px; font-weight: 700; color: #6A1B9A;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+
+  .action-btn {
+    border: 1.5px solid; font-weight: 600;
+  }
+
+  .back-btn {
+    margin: 14px 0 6px; padding: 7px 14px; background: none;
+    border: 1px solid #ddd; border-radius: 6px; cursor: pointer;
+    font-size: 12.5px; color: #666; font-family: inherit;
+  }
+
+  .end-card {
+    margin: 20px 0; padding: 20px; border-radius: 12px; text-align: center;
+  }
+  .end-emoji { font-size: 32px; margin-bottom: 8px; }
+  .end-title { font-size: 18px; font-weight: 800; }
+  .end-desc { font-size: 13px; color: #555; margin-top: 6px; line-height: 1.5; }
+
+  /* Intel */
+  .intel-card {
+    margin: 8px 0; padding: 14px 16px; background: white; border: 1.5px solid #e0e0e0;
+    border-radius: 8px; cursor: pointer; transition: all 0.12s; font-family: inherit;
+    text-align: left; width: 100%; display: block;
+  }
+  .intel-card:hover { border-color: #2E5D8C; }
+  .intel-card-title { font-size: 14px; font-weight: 700; color: #1B2A4A; margin-bottom: 4px; }
+  .intel-card-desc { font-size: 12px; color: #666; line-height: 1.5; }
+  .intel-label { font-size: 11px; font-weight: 700; color: #1A7A6D; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .intel-script { font-size: 13.5px; line-height: 1.55; color: #333; font-style: italic; padding: 10px 14px; background: #f0f7f4; border-left: 3px solid #1A7A6D; border-radius: 0 6px 6px 0; margin: 6px 0 14px; }
+  .intel-warn { font-size: 12px; color: #e65100; font-weight: 600; margin: 4px 0 12px; }
+  .intel-detail { margin: 10px 0; }
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// SPECIALISM DATA
+// ═══════════════════════════════════════════
+
+const SPECS = {
+  block: {
+    id: "block", name: "Block Management", color: "#2E5D8C",
+    hook: "Indemnity gap — management agreement vs PI policy",
+    label: "managing agents",
+    opener: "Hi [NAME], it's Anne from Exchequer. The reason I'm calling — we've been working with managing agents and we keep finding the same thing: the indemnity clauses in the management agreement are broader than what the PI policy actually covers. Most brokers never read the management agreement — they insure off a standard form. Has anyone cross-checked those two documents on your side?",
+    reason: "What we're finding is that the management agreement typically says the agent is liable for any claim arising from the management of the property — but the PI policy often only covers claims arising from professional negligence in advice given. Those are different things. When a leaseholder sues, the claim falls through the gap.",
+    expand: "That's exactly why I called. Trevor Roberts is our CEO — he comes from an underwriting background, so he reads documents the way an insurer would assess a claim, not the way a broker would place a policy. He's been offering a complimentary 20-minute second opinion where he reads the management agreement alongside the policy wording and gives you a straight read on whether they align. Would that be worth exploring?",
+    voicemail: "Hi [NAME], Anne here from Exchequer — quick one about your block insurance arrangements. We've been working with managing agents and we're finding gaps between the management agreement and the PI policy wording. Worth a second look. I'll drop you a short email.",
+    sorted_pivot: "Just out of curiosity — has anyone actually read your management agreements alongside the policy wording? Because brokers typically insure based on a standard form, not based on what you've actually promised in your contracts.",
+    knowledge_bomb: "The reason it matters is that when a leaseholder sues the managing agent — say for failing to maintain the building or arranging inadequate insurance — they rely on the indemnity in the management agreement. The agent relies on their PI policy. If the two don't match, the claim falls through the gap and the agent pays out of pocket.",
+    broker_pivot: "Brokers and underwriters read the same documents with a different focus. A broker looks at placement and premium. An underwriter — which is what Trevor used to be — looks at how a claim would actually be assessed. The management agreement is the document the broker usually hasn't read.",
+  },
+  resi: {
+    id: "resi", name: "Residential Property Mgmt", color: "#1A7A6D",
+    hook: "Under-insurance — reinstatement values vs rebuild costs",
+    label: "residential property firms",
+    opener: "Hi [NAME], it's Anne from Exchequer. The reason I'm calling — we've been helping residential property managers check whether their reinstatement values are still accurate across their portfolios. Rebuild costs have moved significantly but most insured values haven't, and the underinsurance clause catches people off guard at claim time. Has that been looked at recently on your side?",
+    reason: "What we're seeing is that most portfolios are insured based on valuations from years ago, but the actual cost to rebuild — materials, professional fees, architects — has gone up significantly. If the building is under-insured by 20%, the insurer doesn't just cap the payout. They apply the underinsurance clause and reduce every claim by 20%. Even partial claims.",
+    expand: "That's exactly why I called. Trevor Roberts is our CEO — he comes from an underwriting background and he partners with one of the largest valuation firms in the world to run reinstatement valuations across portfolios. It's not guesswork — he can run postcodes through their platform and identify under-insurance across the whole portfolio. He's offering a complimentary 20-minute review. Would that be worth exploring?",
+    voicemail: "Hi [NAME], Anne here from Exchequer — quick one about your portfolio insurance. We've been finding reinstatement values across residential portfolios are significantly out of date, and the underinsurance clause catches people at claim time. Worth a second look. I'll drop you a short email.",
+    sorted_pivot: "Just out of curiosity — when were the reinstatement values last reviewed across the portfolio? Because most firms assume the insured values are right, but rebuild costs have moved a lot in the last few years.",
+    knowledge_bomb: "Here's the bit most people don't realise: a property might sell for £280k but cost £14 million to reinstate if it's listed or has non-standard construction. A client of ours bought a Grade 2 listed building for under £300k — reinstatement value was over £14 million. If it had burned down, they'd have been personally liable for the full reinstatement.",
+    broker_pivot: "Most brokers just ask the client 'how much do you want to insure for?' and take the number. Trevor's approach is the opposite — he checks whether the number actually reflects what it would cost to rebuild. That's an underwriting question, not a broking question.",
+  },
+  lettings: {
+    id: "lettings", name: "Lettings & Property Mgmt", color: "#6A1B9A",
+    hook: "Renters' Rights Act — PI wording hasn't caught up",
+    label: "lettings firms",
+    opener: "Hi [NAME], it's Anne from Exchequer. The reason I'm calling — since the Renters' Rights Act came into force in May, we've been helping lettings firms check whether their PI wording actually reflects the new obligations they're now carrying. Most policies haven't been updated and most brokers haven't flagged it. Is that something that's crossed your desk?",
+    reason: "The Act has changed the operational risk for lettings firms — new obligations around tenancy management, discrimination rules, pet requests, rent reviews, record-keeping for the ombudsman. Any failure can lead to fines or claims. And on top of that, the commission disclosure changes mean the informal arrangements a lot of firms have had with their broker for years are now becoming a regulatory issue.",
+    expand: "That's exactly why I called. Trevor Roberts is our CEO — he comes from an underwriting background, and he's been offering a complimentary 20-minute second opinion specifically for lettings firms to check whether the PI wording reflects the new obligations under the Act. It's not about switching — it's about knowing where you stand. Would that be worth exploring?",
+    voicemail: "Hi [NAME], Anne here from Exchequer — quick one following the Renters' Rights Act. We've been helping lettings firms check whether their PI wording reflects the new obligations. Most policies haven't been updated. Worth a second look. I'll drop you a short email.",
+    sorted_pivot: "Most firms know the operational side of the Act — it's the insurance side that tends to get missed. Has your broker flagged whether your PI wording actually covers the new obligations you're carrying since May?",
+    knowledge_bomb: "The other thing that's changing is commission disclosure. The FCA has been asking brokers to justify commissions paid to managing agents, and informal commission arrangements that have run for years are now becoming declarable. Most brokers haven't flagged it because they're the ones earning the commission.",
+    broker_pivot: "The Renters' Rights Act landed in May — has your broker called you since then to say 'here's what's changed for your PI cover'? Because that's the call that should have happened. Trevor is making that call now for firms whose broker didn't.",
+  },
+  estate: {
+    id: "estate", name: "Estate Management", color: "#C75B12",
+    hook: "Renewal sprawl — scattered dates, no full picture",
+    label: "firms that manage property portfolios",
+    opener: "Hi [NAME], it's Anne from Exchequer. The reason I'm calling — we've been working with estate managers who are running multiple renewal dates across the portfolio, and nobody's looking at the full insurance picture at the same time. Gaps tend to form between policies because nobody cross-checks the wording. Is that something you've had a chance to look at?",
+    reason: "What tends to happen is you've got buildings insurance renewing in March, PI in June, fleet in September, contents on another date, employer's liability somewhere else — each one is a separate conversation, often with a different account handler. Nobody cross-checks the wording between policies, premiums creep up because each renewal happens in isolation, and if you take on new properties, the new risk often falls between renewals and doesn't get picked up.",
+    expand: "That's exactly why I called. Trevor Roberts is our CEO — he consolidates the whole lot onto one renewal date with one point of contact. One conversation, one review, one renewal. He's offering a complimentary 20-minute review to see whether consolidation would work for your setup. Would that be worth exploring?",
+    voicemail: "Hi [NAME], Anne here from Exchequer — quick one about your portfolio insurance arrangements. We've been helping estate managers consolidate scattered renewal dates and we're finding gaps between policies that nobody's cross-checking. Worth a second look. I'll drop you a short email.",
+    sorted_pivot: "Just out of curiosity — how many renewal dates are you running across the portfolio? Because what we tend to find is that even well-managed firms have gaps forming between policies simply because nobody sees the full picture at the same time.",
+    knowledge_bomb: "The firms that have consolidated say the time savings alone were worth it — the MD was dealing with insurance conversations five or six times a year instead of once. But the bigger risk is the gaps. When nobody cross-checks the wording between policies, things fall through — especially when you take on new properties between renewal dates.",
+    broker_pivot: "Big brokers handle each policy as a separate transaction — separate account handler, separate renewal, separate conversation. Nobody at the broker sees your full insurance picture because nobody is looking at all the policies at the same time. Trevor reviews the lot in one sitting.",
+  },
+  mixed: {
+    id: "mixed", name: "Mixed Property Mgmt", color: "#AD1457",
+    hook: "Wording overlap — commercial + residential gaps",
+    label: "property management firms",
+    opener: "Hi [NAME], it's Anne from Exchequer. The reason I'm calling — we've been working with firms that manage a mix of commercial and residential, and the insurance obligations tend to overlap in ways that standard policies don't cover cleanly. Most brokers place them separately and never cross-check. Has anyone reviewed how those two sides sit together on your portfolio?",
+    reason: "When you've got commercial and residential in the same portfolio — or sometimes the same building — you've got different lease structures, different liabilities, and different exclusions. The commercial side has obligations the residential policy doesn't cover, and vice versa. Most brokers place them on separate policies as separate transactions and nobody checks the gap in the middle.",
+    expand: "That's exactly why I called. Trevor Roberts is our CEO — he comes from an underwriting background, so he looks at the full picture rather than each policy in isolation. He's offering a complimentary 20-minute review where he cross-checks how the commercial and residential sides sit together. Would that be worth exploring?",
+    voicemail: "Hi [NAME], Anne here from Exchequer — quick one about your portfolio insurance. We've been working with mixed-portfolio firms and we're finding gaps where the commercial and residential insurance obligations overlap. Worth a second look. I'll drop you a short email.",
+    sorted_pivot: "Just out of curiosity — has anyone looked at how the commercial and residential sides of your insurance actually sit together? Because most brokers place them separately and the overlap is where the gaps tend to form.",
+    knowledge_bomb: "The risk is that neither policy properly covers the middle ground. A water leak in a mixed-use building — which policy responds? A claim from a commercial tenant that affects residential leaseholders — where does the liability sit? These are wording questions, and most standard policies weren't written for the overlap.",
+    broker_pivot: "Decent brokers handle commercial and residential well in isolation — the question is whether anyone's looked at where they overlap. That's the bit that tends to get missed, and it's where Trevor usually finds something.",
+  },
+};
+
+// ═══════════════════════════════════════════
+// INTEL DATA (same as v6)
+// ═══════════════════════════════════════════
+
+const INTEL_SECTIONS = [
+  {
+    id: "discovery", title: "🔍 Discovery & Qualifying Questions",
+    desc: "Questions Trevor uses to qualify. Use 1-2 when a prospect engages.",
+    items: [
+      { label: "Portfolio composition", script: "Can I ask — what does the portfolio look like? Is it mainly standard residential, or do you have a mix of commercial and residential?", note: "Trevor's #1 qualifying question. The answer tells you everything about the revenue opportunity." },
+      { label: "Non-standard properties", script: "Do you have any non-standard properties in the portfolio? Unoccupied buildings, listed properties, anything with unusual construction?", note: "Non-standard = EXRM's specialty. If yes, that's a pain point their broker can't solve well." },
+      { label: "Distressed stock", script: "Any distressed stock or properties that have been hard to get cover for?", note: "If yes, Trevor can insure things most brokers can't." },
+      { label: "Renewal dates", script: "How many renewal dates are you running across the portfolio? Is it a common renewal date or are they spread throughout the year?", note: "Scattered renewals = renewal sprawl. Common renewal = less opportunity on that angle." },
+      { label: "Insurance management", script: "Are you managing the insurance on behalf of your end clients, or do they handle their own arrangements?", note: "If managing on behalf = higher exposure for the management firm." },
+      { label: "Valuations", script: "When were the reinstatement values last reviewed across the portfolio?", note: "'A few years ago' or 'I'm not sure' = under-insurance angle." },
+      { label: "Specialist properties", script: "Do you manage any specialist properties — care homes, supported living, student accommodation?", note: "Higher premiums, higher risk, harder to insure. EXRM's sweet spot." },
+    ]
+  },
+  {
+    id: "underinsurance", title: "🏗️ Under-Insurance (Trevor's #1 Gap)",
+    desc: "The most common problem Trevor finds. Makes the risk tangible.",
+    items: [
+      { label: "What it is", script: "Buildings insured based on valuations from years ago. Reinstatement costs have gone up. If there's a claim, the insurer applies an underinsurance clause and pays out proportionally less.", note: "Trevor's BIGGEST finding. Your go-to proof point." },
+      { label: "How the clause works", script: "If a building costs £10m to reinstate but it's insured for £8m — that's 20% under. The insurer reduces EVERY claim by 20%. Even partial claims.", note: "The detail that makes people sit up." },
+      { label: "Reinstatement vs saleable value", script: "A property might sell for £280k but cost £14 million to reinstate if it's listed or non-standard construction.", note: "Catches people off guard. Most confuse the two." },
+      { label: "The listed building example", script: "Client bought a Grade 2 listed building for under £300k. Reinstatement value was over £14 million. If it had burned down, they'd have been personally liable.", note: "Real example from Trevor. The specificity makes it credible." },
+      { label: "The Kroll partnership", script: "Trevor partners with one of the largest valuation firms in the world. He can run postcodes through their platform and identify under-insurance across the whole portfolio.", note: "Don't name Kroll unless asked. Trevor will name them on the call." },
+    ]
+  },
+  {
+    id: "nonstandard", title: "🏚️ Non-Standard Portfolios",
+    desc: "The properties most insurers don't want. Trevor's sweet spot.",
+    items: [
+      { label: "Unoccupied", script: "Most insurers only offer FLEE cover for unoccupied — fire, lightning, earthquake, explosion. Trevor offers all-risks cover. Significant difference.", note: "FLEE vs all-risks shows you know the industry." },
+      { label: "Listed buildings", script: "Grade 1 very hard to insure. Grade 2 less restrictive but still carries higher premiums — same specialist materials required for reinstatement.", note: "If they manage listed buildings, their broker is probably struggling." },
+      { label: "High-rise / cladding", script: "Post-Grenfell, anything above six stories with certain cladding faces significantly higher premiums — or is uninsurable with standard policies.", note: "Sensitive topic. Don't lead with Grenfell. If they mention high-rise, ask about cladding." },
+      { label: "Care homes", script: "Care homes carry specialist needs — safeguarding exposures, higher arson risk in supported living, regulatory requirements. Premium difference is significant.", note: "Trevor: 'Care homes and specialist needs — that's where premiums start to go up.'" },
+      { label: "Mixed-use", script: "Commercial and residential in the same building creates overlapping obligations that most standard policies don't cover cleanly.", note: "If mixed-use, wording gaps are almost guaranteed." },
+    ]
+  },
+  {
+    id: "examples", title: "📊 Real Examples From Trevor",
+    desc: "Anonymised but specific. The detail is what makes them credible.",
+    items: [
+      { label: "138-apartment block", script: "16-story, 138-apartment block in Coventry — £32 million reinstatement. Premium was £120k. One block. Worth more than 1,000 standard terraced houses.", note: "Use when qualifying. TYPE matters more than NUMBER." },
+      { label: "60% below Howden", script: "On receiver and insolvency work, we're typically 60% below what Howden charges. Not cutting corners — delegated facility, no layers of account handlers.", note: "Trevor said you can use this figure. Use when cost comes up or Howden is mentioned." },
+      { label: "Junior account exec", script: "We picked up a £180k premium firm. Incumbent broker had a junior account exec handling it. Trevor applied proper attention. Client moved. Difference wasn't price — it was attention.", note: "Use when they say they're happy with their big-name broker." },
+      { label: "Listed building", script: "Client bought a Grade 2 listed building for under £300k. Reinstatement was £14 million. They wanted to insure for what they paid.", note: "Use when they say 'we're covered' or 'we're fine.'" },
+      { label: "Consolidated renewal", script: "Firm had PI due now, fleet in six months, everything else scattered. Trevor brought it onto one renewal date. Saves time, full picture reviewed at once.", note: "Use for renewal sprawl angle or when they mention being busy." },
+    ]
+  },
+  {
+    id: "filler", title: "💬 Conversation Extenders",
+    desc: "Lines to keep the conversation going when you need to fill space.",
+    items: [
+      { label: "Premiums going up", script: "A lot of it is driven by under-insurance — reinstatement costs have risen but insured values haven't been updated. Trevor can run a desktop valuation to check.", note: "Bridges from their complaint to Trevor's service." },
+      { label: "Difficult property", script: "That's actually Trevor's specialty — non-standard properties are where he adds the most value. Most insurers want standard concrete blocks, six stories or under.", note: "Shows industry knowledge without being technical." },
+      { label: "Happy with broker", script: "Brokers and underwriters read the same documents with a different focus. A broker looks at placement and premium — an underwriter looks at how a claim would be assessed. Trevor brings that second lens.", note: "Non-threatening, credible." },
+      { label: "Why EXRM is different", script: "Three things: Trevor comes from an underwriting background. We have a delegated facility so we can quote within an hour. And we partner with Kroll on valuations — data-driven, not guesswork.", note: "Keep to three differentiators." },
+      { label: "Close but hesitating", script: "Worst case, you get 20 minutes of confirmation that everything's solid. Best case, you find out before a claim does.", note: "Soft close. Use once, not twice." },
+      { label: "All standard resi", script: "Even with standard resi, reinstatement values drift. Trevor can run a quick desktop check across the postcodes.", note: "Under-insurance works even for standard portfolios." },
+    ]
+  },
+];
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let state = {
+  view: "home",       // home | flow | intel
+  specId: null,
+  step: "opener",
+  history: [],
+  noCount: 0,
+  prospectName: "",
+  intelSection: null,
+};
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function el(tag, attrs, children) {
+  const e = document.createElement(tag);
+  if (attrs) {
+    for (const k in attrs) {
+      if (k === "style") Object.assign(e.style, attrs[k]);
+      else if (k === "onClick") e.addEventListener("click", attrs[k]);
+      else if (k === "innerHTML") e.innerHTML = attrs[k];
+      else if (k === "className") e.className = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+  }
+  if (children) {
+    if (!Array.isArray(children)) children = [children];
+    children.forEach(c => {
+      if (c == null || c === false) return;
+      if (typeof c === "string" || typeof c === "number") e.appendChild(document.createTextNode(c));
+      else e.appendChild(c);
+    });
+  }
+  return e;
+}
+
+function youSay(text, opts) {
+  opts = opts || {};
+  const color = opts.color || "#1A7A6D";
+  const node = el("div", { className: "you-say", style: { background: color + "0F", borderLeftColor: color } });
+  if (opts.label) node.appendChild(el("div", { className: "you-say-label", style: { color } }, opts.label));
+  // Replace [NAME] with prospect name
+  const displayText = text.replace(/\[NAME\]/g, state.prospectName || "[First Name]");
+  node.appendChild(el("div", { className: "you-say-text" }, `"${displayText}"`));
+  return node;
+}
+
+function instruction(text, type) {
+  return el("div", { className: "instruction " + (type || "info") }, text);
+}
+
+function responseBtn(text, onClick, color, emoji) {
+  color = color || "#2E5D8C";
+  const btn = el("button", { className: "response-btn", style: { borderColor: color + "40" }, onClick });
+  btn.addEventListener("mouseover", () => { btn.style.background = color + "10"; btn.style.borderColor = color; });
+  btn.addEventListener("mouseout", () => { btn.style.background = "white"; btn.style.borderColor = color + "40"; });
+  if (emoji) btn.appendChild(document.createTextNode(emoji + " "));
+  btn.appendChild(el("span", { className: "they-say-label" }, "They say: "));
+  btn.appendChild(document.createTextNode(`"${text}"`));
+  return btn;
+}
+
+function actionBtn(text, onClick, color, emoji) {
+  color = color || "#2E7D32";
+  const btn = el("button", { className: "action-btn", style: { background: color + "10", borderColor: color + "80", color: "#1a1a1a" }, onClick });
+  btn.addEventListener("mouseover", () => { btn.style.background = color + "25"; });
+  btn.addEventListener("mouseout", () => { btn.style.background = color + "10"; });
+  if (emoji) btn.appendChild(document.createTextNode(emoji + " "));
+  btn.appendChild(document.createTextNode(text));
+  return btn;
+}
+
+function endCard(emoji, title, desc, bg, color) {
+  return el("div", { className: "end-card", style: { background: bg } }, [
+    el("div", { className: "end-emoji" }, emoji),
+    el("div", { className: "end-title", style: { color } }, title),
+    el("div", { className: "end-desc" }, desc),
+  ]);
+}
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function goTo(newStep, incrementNo) {
+  state.history.push({ step: state.step, noCount: state.noCount });
+  if (incrementNo) state.noCount++;
+  state.step = newStep;
+  render();
+  window.scrollTo(0, 0);
+}
+
+function goBack() {
+  if (state.history.length === 0) return;
+  const last = state.history.pop();
+  state.step = last.step;
+  state.noCount = last.noCount;
+  render();
+}
+
+function startSpec(specId) {
+  const input = document.getElementById("nameInput");
+  const name = input ? input.value.trim() : "";
+  state.specId = specId;
+  state.prospectName = name || "[First Name]";
+  state.step = "opener";
+  state.history = [];
+  state.noCount = 0;
+  state.view = "flow";
+  render();
+}
+
+function reset() {
+  state.view = "home";
+  state.specId = null;
+  state.step = "opener";
+  state.history = [];
+  state.noCount = 0;
+  state.prospectName = "";
+  state.intelSection = null;
+  render();
+  window.scrollTo(0, 0);
+}
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+  if (state.view === "home") renderHome(app);
+  else if (state.view === "intel") renderIntel(app);
+  else renderFlow(app);
+}
+
+function renderHome(app) {
+  app.appendChild(el("div", { className: "home-header" }, [
+    el("div", { className: "home-eyebrow" }, "EXCHEQUER · BUCKET 3"),
+    el("h1", { className: "home-title" }, "Specialism Call Flow v7"),
+    el("p", { className: "home-subtitle" }, "Anne · Booking for Trevor Roberts · CEO Exchequer"),
+  ]));
+
+  app.appendChild(el("div", { className: "rule-banner", innerHTML:
+    `<strong>The two-no rule:</strong> After they say no twice, you exit cleanly. No third push. <em>"Completely understand. Appreciate the time. Have a good day."</em>`
+  }));
+
+  app.appendChild(el("div", { className: "section-label", style: { color: "#1B2A4A" } }, "Select the prospect's specialism"));
+
+  // Name input
+  const nameRow = el("div", { style: { marginBottom: "14px", display: "flex", alignItems: "center", gap: "8px" } });
+  nameRow.appendChild(el("label", { style: { fontSize: "12.5px", fontWeight: "600", color: "#666", whiteSpace: "nowrap" } }, "Prospect's first name:"));
+  const nameInput = el("input", { id: "nameInput", style: { flex: "1", padding: "8px 12px", border: "1.5px solid #ddd", borderRadius: "6px", fontSize: "14px", fontFamily: "inherit", outline: "none" } });
+  nameInput.setAttribute("type", "text");
+  nameInput.setAttribute("placeholder", "Optional — type before clicking");
+  nameInput.addEventListener("focus", () => { nameInput.style.borderColor = "#2E5D8C"; });
+  nameInput.addEventListener("blur", () => { nameInput.style.borderColor = "#ddd"; });
+  nameRow.appendChild(nameInput);
+  app.appendChild(nameRow);
+
+  const grid = el("div", { className: "spec-grid" });
+  Object.values(SPECS).forEach(s => {
+    const card = el("button", {
+      className: "spec-card",
+      style: { borderColor: s.color + "50" },
+      onClick: () => startSpec(s.id),
+    });
+    card.addEventListener("mouseover", () => { card.style.borderColor = s.color; card.style.background = s.color + "08"; });
+    card.addEventListener("mouseout", () => { card.style.borderColor = s.color + "50"; card.style.background = "white"; });
+    card.appendChild(el("div", { className: "spec-card-name", style: { color: s.color } }, s.name));
+    card.appendChild(el("div", { className: "spec-card-hook" }, s.hook));
+    grid.appendChild(card);
+  });
+  app.appendChild(grid);
+
+  // Intel button
+  const intelBtn = el("button", {
+    className: "spec-card",
+    style: { borderColor: "#78909C50", gridColumn: "1 / -1" },
+    onClick: () => { state.view = "intel"; state.intelSection = null; render(); },
+  });
+  intelBtn.addEventListener("mouseover", () => { intelBtn.style.borderColor = "#37474F"; intelBtn.style.background = "#78909C08"; });
+  intelBtn.addEventListener("mouseout", () => { intelBtn.style.borderColor = "#78909C50"; intelBtn.style.background = "white"; });
+  intelBtn.appendChild(el("div", { className: "spec-card-name", style: { color: "#37474F" } }, "📋 Intel & Discovery Questions"));
+  intelBtn.appendChild(el("div", { className: "spec-card-hook" }, "Trevor's qualifying questions, examples, and conversation fillers"));
+  grid.appendChild(intelBtn);
+}
+
+function renderIntel(app) {
+  const header = el("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, paddingBottom: 10, borderBottom: "1px solid #e8e8e8" } });
+  header.appendChild(el("div", null, [
+    el("div", { style: { fontSize: "14px", fontWeight: "800", color: "#1B2A4A" } }, "📋 Intel & Discovery Questions"),
+    el("div", { style: { fontSize: "12px", color: "#666", marginTop: "2px" } }, "From Trevor's calls — use these on your calls"),
+  ]));
+  header.appendChild(el("button", { className: "exit-btn", onClick: reset }, "✕ Back"));
+  app.appendChild(header);
+
+  if (state.intelSection) {
+    const section = INTEL_SECTIONS.find(s => s.id === state.intelSection);
+    if (!section) return;
+    app.appendChild(el("button", { className: "back-btn", onClick: () => { state.intelSection = null; render(); } }, "← All sections"));
+    app.appendChild(el("div", { style: { fontSize: "18px", fontWeight: "800", color: "#1B2A4A", margin: "16px 0 4px" } }, section.title));
+    app.appendChild(el("div", { style: { fontSize: "13px", color: "#666", marginBottom: "16px" } }, section.desc));
+    section.items.forEach(item => {
+      const card = el("div", { className: "intel-detail" });
+      card.appendChild(el("div", { className: "intel-label" }, item.label));
+      card.appendChild(el("div", { className: "intel-script" }, `"${item.script}"`));
+      if (item.note) card.appendChild(el("div", { className: "intel-warn" }, "💡 " + item.note));
+      app.appendChild(card);
+    });
+    return;
+  }
+  INTEL_SECTIONS.forEach(section => {
+    const card = el("button", { className: "intel-card", onClick: () => { state.intelSection = section.id; render(); } });
+    card.appendChild(el("div", { className: "intel-card-title" }, section.title));
+    card.appendChild(el("div", { className: "intel-card-desc" }, section.desc + ` (${section.items.length} items)`));
+    app.appendChild(card);
+  });
+}
+
+function renderFlow(app) {
+  const spec = SPECS[state.specId];
+  const c = spec.color;
+  const name = state.prospectName || "[First Name]";
+
+  // Header
+  const header = el("div", { className: "flow-header" });
+  const headerInfo = el("div", { style: { flex: "1", minWidth: "0" } });
+  headerInfo.appendChild(el("div", { className: "flow-prospect" }, name));
+  headerInfo.appendChild(el("div", { className: "flow-spec", style: { color: c } }, spec.name));
+  if (state.noCount > 0) {
+    const noClass = state.noCount >= 2 ? "nocount-warn" : "nocount-info";
+    headerInfo.appendChild(el("div", { className: "flow-nocount " + noClass },
+      `⚠ ${state.noCount} ${state.noCount === 1 ? "no" : "nos"} so far${state.noCount >= 2 ? " — TIME TO EXIT" : ""}`
+    ));
+  }
+  header.appendChild(headerInfo);
+  header.appendChild(el("button", { className: "exit-btn", onClick: reset }, "✕ Exit"));
+  app.appendChild(header);
+
+  // Voicemail shortcut
+  if (state.step === "opener") {
+    app.appendChild(el("button", { className: "voicemail-shortcut", onClick: () => goTo("end_voicemail") }, "🎙️ Went to voicemail? Click here"));
+  }
+
+  // Render step
+  renderStep(app, spec, c, name);
+
+  // Back
+  if (state.history.length > 0) {
+    app.appendChild(el("button", { className: "back-btn", onClick: goBack }, "← Back"));
+  }
+}
+
+function renderStep(app, spec, c, name) {
+  const step = state.step;
+  const ns = state.noCount;
+
+  switch (step) {
+
+    // ═══════════════════════════════════
+    // OPENER
+    // ═══════════════════════════════════
+    case "opener":
+      app.appendChild(youSay(spec.opener, { label: "Beat 1 · Specialism Opener", color: c }));
+      app.appendChild(instruction("Wait for their response. Don't keep talking.", "rule"));
+      app.appendChild(responseBtn("No / not recently / what do you mean?", () => goTo("reason"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("Yeah it is / I'm busy", () => goTo("opener_busy"), c));
+      app.appendChild(responseBtn("Who are you?", () => goTo("opener_who"), c));
+      app.appendChild(responseBtn("What regulatory changes?", () => goTo("opener_reg"), c));
+      app.appendChild(responseBtn("No thanks / not interested", () => goTo("end_polite_decline", true), c));
+      app.appendChild(responseBtn("How did you get my number?", () => goTo("opener_gdpr"), c));
+      app.appendChild(responseBtn("We're sorted / all good", () => goTo("obj_sorted", true), c));
+      app.appendChild(responseBtn("That's not relevant to me", () => goTo("resp_not_relevant", true), c));
+      app.appendChild(responseBtn("It's not me that handles that", () => goTo("obj_not_me"), c));
+      app.appendChild(responseBtn("We don't do property management", () => goTo("obj_not_pm"), c));
+      return;
+
+    // ═══════════════════════════════════
+    // REASON (they engaged)
+    // ═══════════════════════════════════
+    case "reason":
+      app.appendChild(instruction("🟢 They opened the door. Deliver the reason + expand.", "tip"));
+      app.appendChild(youSay(spec.reason, { label: "Beat 2 · The Problem", color: c }));
+      app.appendChild(instruction("Pause. Let it land. Then deliver the ask.", "rule"));
+      app.appendChild(youSay(spec.expand, { label: "Beat 3 · Trevor + The Ask", color: c }));
+      app.appendChild(responseBtn("Yeah / worth a look / tell me more", () => goTo("booking"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("What does it involve?", () => goTo("resp_what_involve"), c));
+      app.appendChild(responseBtn("What does it cost?", () => goTo("resp_cost"), c));
+      app.appendChild(responseBtn("What does Trevor actually do?", () => goTo("resp_what_trevor"), c));
+      app.appendChild(responseBtn("I need to think about it", () => goTo("resp_think"), c));
+      app.appendChild(responseBtn("Send me something first", () => goTo("resp_send_first"), c));
+      app.appendChild(responseBtn("We're sorted / have a broker", () => goTo("obj_sorted", true), c));
+      app.appendChild(responseBtn("Not interested", () => goTo("obj_not_interested", true), c));
+      return;
+
+    // ═══════════════════════════════════
+    // OPENER BRANCHES
+    // ═══════════════════════════════════
+    case "opener_busy":
+      app.appendChild(youSay("No problem at all. When would be better for a quick call?", { color: c }));
+      app.appendChild(instruction("Get a specific day and time. 'Later' is dead. 'Thursday morning' is a callback."));
+      app.appendChild(actionBtn("Got specific callback time", () => goTo("end_callback"), "#e65100", "📞"));
+      app.appendChild(responseBtn("Just send me an email", () => goTo("obj_email"), c));
+      return;
+
+    case "opener_who":
+      app.appendChild(youSay(`Anne from Exchequer — we're a risk advisory firm that works with ${spec.label}. It's about your insurance arrangements. Have I caught you at a bad time?`, { color: c }));
+      app.appendChild(instruction("Don't over-explain. Repeat the question."));
+      app.appendChild(responseBtn("No, go ahead", () => goTo("reason"), "#2E7D32"));
+      app.appendChild(responseBtn("Not interested", () => goTo("end_polite_decline", true), c));
+      return;
+
+    case "opener_reg":
+      app.appendChild(youSay(spec.sorted_pivot, { color: c }));
+      app.appendChild(instruction("Handle as per their response below.", "rule"));
+      app.appendChild(responseBtn("No / not recently", () => goTo("reason"), "#2E7D32"));
+      app.appendChild(responseBtn("Yes", () => goTo("resp_yes"), c));
+      app.appendChild(responseBtn("We're sorted", () => goTo("obj_sorted", true), c));
+      return;
+
+    case "opener_gdpr":
+      app.appendChild(youSay("Good question. We use publicly available business information and professional contact databases. Your details were listed as a business contact. If you'd prefer not to receive calls from us, I completely understand and can make a note of that.", { color: c }));
+      app.appendChild(responseBtn("That's fine / go on", () => goTo("reason"), "#2E7D32"));
+      app.appendChild(responseBtn("Please remove me", () => goTo("end_removed"), c));
+      return;
+
+    // ═══════════════════════════════════
+    // POSITIVE RESPONSES
+    // ═══════════════════════════════════
+    case "resp_yes":
+      app.appendChild(instruction("Don't pitch — ask a follow-up to learn what they've actually done."));
+      app.appendChild(youSay("That's good to hear. Out of curiosity, was that reviewed internally or through your broker?", { color: c }));
+      app.appendChild(responseBtn("By our broker", () => goTo("resp_yes_broker"), c));
+      app.appendChild(responseBtn("Internally", () => goTo("resp_yes_internal"), c));
+      app.appendChild(responseBtn("I'm not actually sure", () => goTo("resp_unsure"), "#2E7D32"));
+      return;
+
+    case "resp_yes_broker":
+      app.appendChild(youSay(spec.broker_pivot + " It's a complimentary 20-minute second opinion — not about switching, just a different lens. Would that be worth 20 minutes?", { color: c }));
+      app.appendChild(responseBtn("Yeah okay", () => goTo("booking"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("No we're covered", () => goTo("obj_sorted", true), c));
+      app.appendChild(responseBtn("Maybe / think about it", () => goTo("resp_think"), c));
+      return;
+
+    case "resp_yes_internal":
+      app.appendChild(youSay("That's great. Trevor tends to complement internal reviews rather than replace them — he brings an underwriting perspective which is a different skill set. We've worked with firms where the internal review was thorough but Trevor spotted something on the wording side. Would it be worth that second perspective?", { color: c }));
+      app.appendChild(responseBtn("Yeah why not", () => goTo("booking"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("We're happy as is", () => goTo("obj_sorted", true), c));
+      return;
+
+    case "resp_unsure":
+      app.appendChild(instruction("🟢 Gold. They've told you they don't know.", "tip"));
+      app.appendChild(youSay("That's actually the response we hear most often. Most people assume it's been checked, but they're not always certain. That's exactly why Trevor offers the review — a complimentary 20-minute second opinion. Either way you'll have a clear picture. Would that be worth exploring?", { color: c }));
+      app.appendChild(responseBtn("Yeah let's do it", () => goTo("booking"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("Maybe / think about it", () => goTo("resp_think"), c));
+      app.appendChild(responseBtn("Send something first", () => goTo("resp_send_first"), c));
+      return;
+
+    case "resp_not_relevant":
+      app.appendChild(instruction("⚠ DON'T HANG UP. Use curiosity, not persuasion.", "warn"));
+      app.appendChild(youSay("That's fair. Just out of curiosity, what gives you the confidence it's not relevant?", { color: c }));
+      app.appendChild(instruction("STOP. Let them explain. ~30% will start talking.", "rule"));
+      app.appendChild(responseBtn("They start explaining (engaging)", () => goTo("resp_not_relevant_engaged"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn('They repeat "not interested"', () => goTo("end_polite_decline", true), c));
+      app.appendChild(responseBtn('"We don\'t do property management"', () => goTo("obj_not_pm"), c));
+      return;
+
+    case "resp_not_relevant_engaged":
+      app.appendChild(instruction("They're talking. Listen. Then bridge.", "tip"));
+      app.appendChild(youSay("That makes sense, I appreciate you sharing that. " + spec.knowledge_bomb + " It's a complimentary 20-minute second opinion. Would it be worth exploring, even just to confirm you're in good shape?", { color: c }));
+      app.appendChild(responseBtn("Okay worth a look", () => goTo("booking"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("Still not interested", () => goTo("end_polite_decline", true), c));
+      return;
+
+    // ═══════════════════════════════════
+    // DETAIL QUESTIONS
+    // ═══════════════════════════════════
+    case "resp_what_involve":
+      app.appendChild(youSay("Twenty minutes online with Trevor. He looks at your current insurance arrangements alongside your management agreements and gives you a straight read on whether they align. That's it. No pitch, no obligation.", { color: c }));
+      app.appendChild(responseBtn("Okay let's do it", () => goTo("booking"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("Need to think about it", () => goTo("resp_think"), c));
+      return;
+
+    case "resp_cost":
+      app.appendChild(youSay("The review is complimentary — no cost, no obligation. If Trevor identifies something worth looking at and you want him to explore options, he handles that separately. But the review itself is just a second opinion.", { color: c }));
+      app.appendChild(instruction("Never quote numbers. Trevor handles pricing.", "warn"));
+      app.appendChild(responseBtn("Okay let's do it", () => goTo("booking"), "#2E7D32"));
+      app.appendChild(responseBtn("Let me think", () => goTo("resp_think"), c));
+      return;
+
+    case "resp_think":
+      app.appendChild(youSay("Of course. Can I call you Thursday to lock something in? Easier than going back and forth over email.", { color: c }));
+      app.appendChild(instruction("Get a specific date.", "rule"));
+      app.appendChild(actionBtn("Got specific callback day", () => goTo("end_callback"), "#e65100", "📞"));
+      app.appendChild(responseBtn("Just send email", () => goTo("resp_send_first"), c));
+      return;
+
+    case "resp_what_trevor":
+      app.appendChild(youSay("He reviews the management agreements alongside the policy wording from an underwriting perspective. He used to work on the insurer side, so he reads policies through the lens of how a claim would actually be assessed — the exclusions, conditions, things that determine whether something pays out. It's a different read to what a broker typically focuses on.", { color: c }));
+      app.appendChild(responseBtn("Okay let's do it", () => goTo("booking"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("Need to think", () => goTo("resp_think"), c));
+      return;
+
+    case "resp_send_first":
+      app.appendChild(youSay("Of course — what's the best email? I'll send a short summary and a couple of diary options from Trevor. If one works, just reply.", { color: c }));
+      app.appendChild(instruction("Send same day. Call back in 2 days.", "tip"));
+      app.appendChild(actionBtn("Got email → send today, follow up in 2 days", () => goTo("end_email_followup"), "#1565c0", "📧"));
+      return;
+
+    // ═══════════════════════════════════
+    // OBJECTIONS
+    // ═══════════════════════════════════
+    case "obj_sorted":
+      if (ns >= 2) {
+        app.appendChild(instruction(`⚠ They've said no ${ns} times. Two-no rule: EXIT. No third push.`, "warn"));
+        app.appendChild(youSay("Completely understand. Appreciate the time. Have a good day.", { color: c }));
+        app.appendChild(actionBtn("End call cleanly", () => goTo("end_polite_decline"), "#c62828", "📋"));
+      } else {
+        app.appendChild(instruction(`"We're sorted" — ${ns} no${ns===1?"":"s"} so far. One curiosity question. Pick whichever feels natural:`, "info"));
+        app.appendChild(responseBtn("🔍 " + spec.sorted_pivot, () => goTo("sorted_pivot_response"), "#2E7D32"));
+        app.appendChild(responseBtn("📅 When does your current arrangement renew?", () => goTo("sorted_q_renewal"), "#2E7D32"));
+        app.appendChild(responseBtn("👁️ Has anyone read it from an underwriting angle?", () => goTo("sorted_q_underwriting"), "#2E7D32"));
+      }
+      return;
+
+    case "sorted_pivot_response":
+      app.appendChild(youSay(spec.sorted_pivot, { color: c }));
+      app.appendChild(responseBtn("No / not sure", () => goTo("resp_unsure"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("Yes, our broker did", () => goTo("resp_yes_broker"), c));
+      app.appendChild(responseBtn("Yes, internally", () => goTo("resp_yes_internal"), c));
+      app.appendChild(responseBtn("Not telling you / not interested", () => goTo("end_polite_decline", true), c));
+      return;
+
+    case "sorted_q_renewal":
+      app.appendChild(youSay("Completely understand. Just so I know whether it's worth reaching out again — when does your current arrangement come up for renewal?", { color: c }));
+      app.appendChild(instruction("If they give a date, that's a nurture lead."));
+      app.appendChild(actionBtn("Got renewal date → nurture", () => goTo("end_nurture_renewal"), "#2E7D32", "📅"));
+      app.appendChild(responseBtn("Not telling you / not interested", () => goTo("end_polite_decline", true), c));
+      return;
+
+    case "sorted_q_underwriting":
+      app.appendChild(youSay(spec.broker_pivot + " It's a complimentary 20-minute second opinion — not about switching, just a different lens. Would that be worth 20 minutes?", { color: c }));
+      app.appendChild(responseBtn("Yeah worth a look", () => goTo("booking"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("No still not interested", () => goTo("end_polite_decline", true), c));
+      return;
+
+    case "obj_not_pm":
+      app.appendChild(instruction("Possible data error. Probe first.", "info"));
+      app.appendChild(youSay("Understood — do you do any lettings or property management alongside the sales side?", { color: c }));
+      app.appendChild(responseBtn("Yes we do lettings", () => goTo("obj_not_pm_lettings"), "#2E7D32"));
+      app.appendChild(responseBtn("No, pure sales / nothing relevant", () => goTo("end_data_error"), c));
+      return;
+
+    case "obj_not_pm_lettings":
+      app.appendChild(youSay("That's actually where this is relevant. The Renters' Rights Act has changed the obligations for lettings firms specifically. Trevor's been offering a complimentary second opinion on whether the insurance wording reflects those new obligations. Would that be worth a quick look?", { color: c }));
+      app.appendChild(responseBtn("Yeah okay", () => goTo("booking"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("No still not relevant", () => goTo("end_polite_decline", true), c));
+      return;
+
+    case "obj_not_me":
+      app.appendChild(instruction("DON'T pitch them again. Get the name of the right person.", "warn"));
+      app.appendChild(youSay("No problem at all — who would be the best person to speak to about the insurance arrangements?", { color: c }));
+      app.appendChild(actionBtn("Got name + email", () => goTo("obj_not_me_followup"), "#2E7D32", "📋"));
+      app.appendChild(responseBtn("They won't give a name", () => goTo("end_polite_decline"), c));
+      return;
+
+    case "obj_not_me_followup":
+      app.appendChild(youSay("Perfect — and just so I can frame the email properly, does that person handle all the insurance across the portfolio, or is there someone else involved as well?", { color: c }));
+      app.appendChild(instruction("Get the email. Thank them. Send email same day referencing their name.", "tip"));
+      app.appendChild(actionBtn("Got the contact, end clean", () => goTo("end_referral_received"), "#2E7D32", "✅"));
+      return;
+
+    case "obj_email":
+      app.appendChild(youSay("Happy to. The challenge is that this is quite specific to your management agreements and policy wording, so there's only so much a one-pager can tell you. That's why Trevor offers the complimentary second opinion — he actually reads both documents side by side. Would it make sense to put 20 minutes in the diary and I'll send some information over as well?", { color: c }));
+      app.appendChild(responseBtn("Okay book it", () => goTo("booking"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("Just send the email for now", () => goTo("resp_send_first"), c));
+      return;
+
+    case "obj_not_interested":
+      if (ns >= 2) {
+        app.appendChild(instruction("🛑 Two nos. EXIT. Do not push.", "warn"));
+        app.appendChild(youSay("No problem at all. Have a good day.", { color: c }));
+        app.appendChild(actionBtn("End call cleanly", () => goTo("end_polite_decline"), "#c62828", "📋"));
+      } else {
+        app.appendChild(youSay("No problem. Just so I know, is that because you've already had this reviewed, or is it simply not a priority right now?", { color: c }));
+        app.appendChild(instruction("About 20-30% will answer."));
+        app.appendChild(responseBtn("Already reviewed → pivot", () => goTo("resp_yes"), c));
+        app.appendChild(responseBtn("Not a priority → nurture", () => goTo("end_nurture"), c));
+        app.appendChild(responseBtn("Just not interested → end", () => goTo("end_polite_decline", true), c));
+      }
+      return;
+
+    case "obj_busy":
+      app.appendChild(youSay("Completely understand. That's actually why Trevor keeps it to 20 minutes. Can I put something in the diary for next week?", { color: c }));
+      app.appendChild(responseBtn("Yeah gives a time", () => goTo("booking"), "#2E7D32", "✅"));
+      app.appendChild(responseBtn("Call me back another time", () => goTo("end_callback"), c));
+      app.appendChild(responseBtn("No", () => goTo("end_polite_decline", true), c));
+      return;
+
+    // ═══════════════════════════════════
+    // BOOKING
+    // ═══════════════════════════════════
+    case "booking":
+      app.appendChild(instruction("🟢 THEY'RE IN. Assume the close. Don't ask 'would you like to book?' — go straight to logistics.", "tip"));
+      app.appendChild(youSay("Brilliant. Are mornings or afternoons generally better for you?", { label: "Beat 4 · Book", color: c }));
+      app.appendChild(instruction("Wait for answer."));
+      app.appendChild(youSay("Perfect. What's the best email address to use?", { color: c }));
+      app.appendChild(instruction("Wait for answer. Confirm spelling."));
+      app.appendChild(youSay("You'll receive a calendar invite from Trevor directly.", { color: c }));
+      app.appendChild(instruction("OPTIONAL: 'Trevor may ask for your insurance schedule beforehand.' Don't make it a requirement.", "info"));
+      app.appendChild(actionBtn("✅ Booking confirmed → close call", () => goTo("close"), "#2E7D32", "🎉"));
+      return;
+
+    case "close":
+      app.appendChild(youSay("Appreciate the time, [NAME]. If anything moves just reply to the invite and we'll shift it. Speak soon.", { label: "Beat 5 · Close", color: c }));
+      app.appendChild(endCard("🎉", "Meeting booked", "Send calendar invite. Confirm details. Brief Trevor on specialism: " + spec.name + ".", "#e8f5e9", "#2E7D32"));
+      app.appendChild(actionBtn("Start new call", reset, "#2E7D32", "➡️"));
+      return;
+
+    // ═══════════════════════════════════
+    // END STATES
+    // ═══════════════════════════════════
+    case "end_callback":
+      app.appendChild(endCard("📞", "Callback scheduled", "Note exact day and time. Call back when they said.", "#fff3e0", "#e65100"));
+      app.appendChild(actionBtn("Start new call", reset, "#2E7D32", "➡️"));
+      return;
+
+    case "end_email_followup":
+      app.appendChild(endCard("📧", "Email follow-up", "Send today. Follow up in 2 days with a call.", "#e3f2fd", "#1565c0"));
+      app.appendChild(actionBtn("Start new call", reset, "#2E7D32", "➡️"));
+      return;
+
+    case "end_voicemail":
+      app.appendChild(youSay(spec.voicemail, { label: "Voicemail (under 15 sec)", color: c }));
+      app.appendChild(instruction("Send follow-up email same day. Try again in 2 days.", "tip"));
+      app.appendChild(endCard("🎙️", "Voicemail left", "Email same day. Retry in 2 days.", "#f3e5f5", "#6A1B9A"));
+      app.appendChild(actionBtn("Start new call", reset, "#2E7D32", "➡️"));
+      return;
+
+    case "end_nurture":
+      app.appendChild(youSay("No problem at all, [NAME]. If anything changes feel free to reach out. Have a good day.", { color: c }));
+      app.appendChild(endCard("📋", "Nurture", "Note reason. Re-engage in 30 days.", "#fafafa", "#666"));
+      app.appendChild(actionBtn("Start new call", reset, "#2E7D32", "➡️"));
+      return;
+
+    case "end_nurture_renewal":
+      app.appendChild(youSay("Perfect. I'll make a note. Would it be okay if I reached out a few weeks before that, just so you have options on the table? No obligation.", { color: c }));
+      app.appendChild(endCard("📅", "Renewal nurture", "Note renewal date. Call 90 days before.", "#e8f5e9", "#2E7D32"));
+      app.appendChild(actionBtn("Start new call", reset, "#2E7D32", "➡️"));
+      return;
+
+    case "end_polite_decline":
+      app.appendChild(youSay("Completely understand. Appreciate the time. Have a good day.", { color: c }));
+      app.appendChild(instruction("Two-no rule. Clean exit. Never push past.", "rule"));
+      app.appendChild(endCard("🛑", "Not interested", "Note. Move on. Don't re-call.", "#ffebee", "#c62828"));
+      app.appendChild(actionBtn("Start new call", reset, "#2E7D32", "➡️"));
+      return;
+
+    case "end_removed":
+      app.appendChild(youSay("Of course. I've made a note of that. Sorry to have bothered you.", { color: c }));
+      app.appendChild(endCard("🚫", "Do not contact", "Mark removed. Do not re-engage.", "#ffebee", "#c62828"));
+      app.appendChild(actionBtn("Start new call", reset, "#2E7D32", "➡️"));
+      return;
+
+    case "end_referral_received":
+      app.appendChild(youSay("Appreciate that. I'll reach out today and mention [NAME] sent me. Have a good day.", { color: c }));
+      app.appendChild(endCard("🎁", "Referral received", "Send email today, reference the referrer's name in the first line.", "#fff3e0", "#e65100"));
+      app.appendChild(actionBtn("Start new call", reset, "#2E7D32", "➡️"));
+      return;
+
+    case "end_data_error":
+      app.appendChild(youSay("No problem at all, [NAME]. Sorry for the confusion — thanks for taking the call.", { color: c }));
+      app.appendChild(endCard("⚠️", "Data error", "Flag to Theo — not a property management firm. Miscategorised.", "#fff3e0", "#e65100"));
+      app.appendChild(actionBtn("Start new call", reset, "#2E7D32", "➡️"));
+      return;
+
+    default:
+      app.appendChild(el("div", null, "Unknown step: " + step));
+  }
+}
+
+render();
+</script>
+</body>
+</html>
